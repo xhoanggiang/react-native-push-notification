@@ -17,6 +17,8 @@ import com.facebook.react.ReactApplication;
 import com.facebook.react.ReactInstanceManager;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
+import io.intercom.android.sdk.push.IntercomPushClient;
+import java.util.Map;
 
 import org.json.JSONObject;
 
@@ -26,21 +28,24 @@ import java.util.Random;
 import static com.dieam.reactnativepushnotification.modules.RNPushNotification.LOG_TAG;
 
 public class RNPushNotificationListenerService extends FirebaseMessagingService {
+	
+	private final IntercomPushClient intercomPushClient = new IntercomPushClient();
+	
+	@Override public void onNewToken(String refreshedToken) {
+    intercomPushClient.sendTokenToIntercom(getApplication(), refreshedToken);
+    //DO HOST LOGIC HERE
+}
 
     @Override
     public void onMessageReceived(RemoteMessage message) {
+		Map message2 = message.getData();
+		if (intercomPushClient.isIntercomPush(message2)) {
+			intercomPushClient.handlePush(getApplication(), message2);
+		}
+		else {			
         String from = message.getFrom();
-        RemoteMessage.Notification remoteNotification = message.getNotification();
 
         final Bundle bundle = new Bundle();
-        // Putting it from remoteNotification first so it can be overriden if message
-        // data has it
-        if (remoteNotification != null) {
-            // ^ It's null when message is from GCM
-            bundle.putString("title", remoteNotification.getTitle());
-            bundle.putString("message", remoteNotification.getBody());
-        }
-
         for(Map.Entry<String, String> entry : message.getData().entrySet()) {
             bundle.putString(entry.getKey(), entry.getValue());
         }
@@ -98,6 +103,7 @@ public class RNPushNotificationListenerService extends FirebaseMessagingService 
                 }
             }
         });
+		}
     }
 
     private JSONObject getPushData(String dataString) {
